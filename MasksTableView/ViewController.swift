@@ -10,12 +10,12 @@ import UIKit
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
-    var tableData:Array<Dictionary<String, String>> = []
+    var tableData = [Mask]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        //JSONSerialization.jsonObject(with: <#T##Data#>, options: <#T##JSONSerialization.ReadingOptions#>)
         
+        parseJSON()
         
         let tableView = UITableView(frame: self.view.bounds, style: .plain)
         tableView.register(CustomCell.self, forCellReuseIdentifier: "cellId")
@@ -25,8 +25,29 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.view.addSubview(tableView)
     }
     
+    func parseJSON() {
+        if let path = Bundle.main.path(forResource: "mask", ofType: "json") {
+            let url = URL(fileURLWithPath: path)
+            
+            do {
+                let data = try Data(contentsOf: url)
+                let arrayOfDictionaries = try JSONSerialization.jsonObject(with: data, options: []) as! Array<Dictionary<String, String>>
+                for dict in arrayOfDictionaries {
+                    let mask = Mask(icon_url: dict["icon_url"]!,
+                                    loc_key: dict["loc_key"]!,
+                                    resource_id: dict["resource_id"]!,
+                                    blendMode: dict["blendMode"]!,
+                                    orientation: dict["orientation"]!)
+                    tableData.append(mask)
+                }
+            } catch {
+                print(error)
+            }
+        }
+    }
+    
     func numberOfSections(in tableView: UITableView) -> Int {
-        1
+        return 1
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -42,10 +63,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     func config(cell:CustomCell, indexPath:IndexPath) {
-        let object = tableData[indexPath.row]
-        cell.textLabel?.text = object["title"]!
+        let mask = tableData[indexPath.row]
+        cell.textLabel?.text = mask.loc_key
         
-        let url:String = object["url"]!
+        let url:String = mask.icon_url
         cell.tag = indexPath.row
         let loader = ImageLoader(url: url) { [weak cell] (image) in
             
