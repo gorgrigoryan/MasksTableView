@@ -3,7 +3,7 @@
 //  MasksTableView
 //
 //  Created by Gor Grigoryan on 10/31/19.
-//  Copyright © 2019 Gor Grigoryan. All rights reserved.
+//  Copyright © 2019 Narek Safaryan. All rights reserved.
 //
 
 import UIKit

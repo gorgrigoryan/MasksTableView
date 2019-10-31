@@ -3,7 +3,7 @@
 //  MasksTableView
 //
 //  Created by Gor Grigoryan on 10/31/19.
-//  Copyright © 2019 Gor Grigoryan. All rights reserved.
+//  Copyright © 2019 Narek Safaryan. All rights reserved.
 //
 
 import UIKit
@@ -16,7 +16,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         super.viewDidLoad()
         
         parseJSON()
-        
+        configureTableView()
+    }
+    
+    func configureTableView() {
         let tableView = UITableView(frame: self.view.bounds, style: .plain)
         tableView.register(CustomCell.self, forCellReuseIdentifier: "cellId")
         tableView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -31,7 +34,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             
             do {
                 let data = try Data(contentsOf: url)
-                let arrayOfDictionaries = try JSONSerialization.jsonObject(with: data, options: []) as! Array<Dictionary<String, String>>
+                let arrayOfDictionaries = try JSONSerialization.jsonObject(with: data, options: []) as! [[String : String]]
                 for dict in arrayOfDictionaries {
                     let mask = Mask(icon_url: dict["icon_url"]!,
                                     loc_key: dict["loc_key"]!,
@@ -56,24 +59,21 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cellId") as! CustomCell
-        
         config(cell: cell, indexPath: indexPath)
         
         return cell
     }
     
-    func config(cell:CustomCell, indexPath:IndexPath) {
+    func config(cell: CustomCell, indexPath: IndexPath) {
         let mask = tableData[indexPath.row]
-        cell.textLabel?.text = mask.loc_key
         
-        let url:String = mask.icon_url
+        let url = mask.icon_url
         cell.tag = indexPath.row
         let loader = ImageLoader(url: url) { [weak cell] (image) in
-            
             if let cell = cell, cell.tag == indexPath.row {
                 cell.imageView?.image = image
+                cell.textLabel?.text = mask.loc_key
             }
-            
         }
         
         cell.setImageLoader(loader: loader)
@@ -115,13 +115,12 @@ class ImageLoader {
                                                name: NSNotification.Name.init("download-success"),
                                                object: nil)
         Downloader.shared().download(urlString: self.urlString)
-        
     }
     
     @objc func downloadComplete(note:NSNotification) {
         guard let info = note.userInfo,
             let url = info["url"] as? String,
-            url != self.urlString else {
+            url == self.urlString else {
             return
         }
                 
@@ -147,18 +146,26 @@ class Downloader {
     }
     
     func download(urlString:String) {
-        //keep downloading urls and check for double or more download
         DispatchQueue.global().async {
-            //check in file sytem and create from file (data), otherwise download from url
+            let url = URL(string: urlString)
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             
-            let data = try! Data(contentsOf: URL(string: urlString)!)
+            let imageName = (url!.deletingPathExtension()).lastPathComponent + ".jpg"
+            let imagePath = documentsDirectory!.appendingPathComponent(imageName)
+            var image = UIImage()
             
-            //Write into file system (documents directory)
-            
-            let image = UIImage(data: data)
+            if FileManager.default.fileExists(atPath: imagePath.path) {
+                image = UIImage(contentsOfFile: imagePath.path)!
+            } else {
+                let data = try? Data(contentsOf: URL(string: urlString)!)
+                if let data = data {
+                    image = UIImage(data: data)!
+                    try? data.write(to: imagePath)
+                }
+            }
             
             DispatchQueue.main.async {
-                var info = Dictionary() as Dictionary<String, Any>
+                var info = Dictionary() as [String : Any]
                 info["image"] = image
                 info["url"] = urlString
                 NotificationCenter.default.post(name: NSNotification.Name.init("download-success"),
